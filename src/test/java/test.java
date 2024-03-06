@@ -1,4 +1,5 @@
 import com.lcx.simplespring.service.AppConfig;
+import com.lcx.simplespring.service.UserInterface;
 import com.lcx.simplespring.service.UserService;
 import com.lcx.simplespring.spring.ApplicationContext;
 
@@ -10,7 +11,7 @@ import com.lcx.simplespring.spring.ApplicationContext;
 public class test {
     public static void main(String[] args) {
         ApplicationContext applicationContext = new ApplicationContext(AppConfig.class);
-        UserService userService = (UserService) applicationContext.getBean("userService");
+        UserInterface userService = (UserInterface) applicationContext.getBean("userService");
         userService.test();
     }
 }

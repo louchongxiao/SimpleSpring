@@ -5,6 +5,7 @@ import java.io.File;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -17,7 +18,7 @@ public class ApplicationContext {
 
     private ConcurrentHashMap<String, BeanDefinition> beanDefinitionMap = new ConcurrentHashMap<>();
     private ConcurrentHashMap<String, Object> singletonObjects = new ConcurrentHashMap<>();
-
+    private ArrayList<BeanPostProcessor> beanPostProcessorList = new ArrayList<>();
     public ApplicationContext(Class configClass) {
         this.configClass = configClass;
         //扫描
@@ -36,6 +37,14 @@ public class ApplicationContext {
                         try {
                             Class<?> clazz = classLoader.loadClass(fileName.substring(fileName.indexOf("com"), fileName.indexOf(".class")).replace("\\", "."));
                             if (clazz.isAnnotationPresent(Component.class)) {
+
+
+                                if (BeanPostProcessor.class.isAssignableFrom(clazz)) {
+                                    BeanPostProcessor beanPostProcessor = (BeanPostProcessor) clazz.newInstance();
+                                    beanPostProcessorList.add(beanPostProcessor);
+                                }
+
+
                                 BeanDefinition beanDefinition = new BeanDefinition();
                                 beanDefinition.setType(clazz);
                                 if (clazz.isAnnotationPresent(Scope.class)) {
@@ -45,14 +54,21 @@ public class ApplicationContext {
                                 } else {
                                     beanDefinition.setScope("singleton");
                                 }
+
+
                                 Component componentAnnotation = clazz.getAnnotation(Component.class);
                                 String beanName = componentAnnotation.value();
                                 if (beanName.equals("")) {
                                     beanName = Introspector.decapitalize(clazz.getSimpleName());
                                 }
                                 beanDefinitionMap.put(beanName, beanDefinition);
+
                             }
                         } catch (ClassNotFoundException e) {
+                            throw new RuntimeException(e);
+                        } catch (InstantiationException e) {
+                            throw new RuntimeException(e);
+                        } catch (IllegalAccessException e) {
                             throw new RuntimeException(e);
                         }
                     }
@@ -81,6 +97,29 @@ public class ApplicationContext {
                     field.set(instance, getBean(field.getName()));
                 }
             }
+            //Aware接口回调
+            if (instance instanceof BeanNameAware) {
+                ((BeanNameAware) instance).setBeanName(beanName);
+            }
+
+            //Initializing
+            if (instance instanceof InitializingBean) {
+                ((InitializingBean) instance).afterPropertiesSet();
+            }
+
+            for (BeanPostProcessor beanPostProcessor : beanPostProcessorList) {
+                beanPostProcessor.postProcessBeforeInitialization(instance, beanName);
+            }
+
+            //初始化
+            if (instance instanceof InitializingBean) {
+                ((InitializingBean) instance).afterPropertiesSet();
+            }
+
+            for (BeanPostProcessor beanPostProcessor : beanPostProcessorList) {
+                instance = beanPostProcessor.postProcessAfterInitialization(instance, beanName);
+            }
+
             return instance;
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException |
                  NoSuchMethodException e) {
