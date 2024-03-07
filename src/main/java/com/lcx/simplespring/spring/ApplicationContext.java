@@ -1,14 +1,28 @@
 package com.lcx.simplespring.spring;
 
+import javax.annotation.PostConstruct;
 import java.beans.Introspector;
 import java.io.File;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
+ *
+ * UserService.class->推断构造方法->对象-->依赖注入-->初始化前-->初始化-->初始化后(A0P)-->代理对象->放入Map(单例池)-->Bean对象
+ * 推断构造方法: 1.选择构造方法，有多个构造方法默认用无参的，找不到就报错。2.判断构造方法入参，如果有入参从beanMap中找，规则是先byType再byName。
+ * 依赖注入:1.找带有Autowired注解的属性，从beanMap中找到相应的bean，规则是先byType再byName,最后赋值。
+ * 初始化前：处理PostConstruct注解的方法。
+ * 初始化：处理InitializingBean的afterPropertiesSet()方法
+ * 初始化后：
+ *      1.处理aop，生成代理对象，代理对象继承原对象，类实现了某个或多个接口时使用动态代理，类没有实现任何接口、代理final类或final方法则
+ *      使用CGLIB。代理对象会将原对象的bean作为参数。重写原对象切面方法A，将自定义的before,after等方法加入重写的方法A中。再调用原对象bean的切面方法A。
+ *          1.Spring事务切面逻辑：
+ *              a:事务管理器新建一个数据库连接conn
+ *              b:
  * @authoer louchongxiao
  * @description
  * @date 2024/3/5 17:11
@@ -89,26 +103,29 @@ public class ApplicationContext {
     private Object createBean(String beanName, BeanDefinition beanDefinition) {
         Class clazz = beanDefinition.getType();
         try {
+            //依赖注入
             Object instance = clazz.getConstructor().newInstance();
-            Field[] fields = clazz.getDeclaredFields();
-            for (Field field : fields) {
+            for (Field field : clazz.getDeclaredFields()) {
                 if (field.isAnnotationPresent(Autowired.class)) {
                     field.setAccessible(true);
                     field.set(instance, getBean(field.getName()));
                 }
             }
+
             //Aware接口回调
             if (instance instanceof BeanNameAware) {
                 ((BeanNameAware) instance).setBeanName(beanName);
             }
 
-            //Initializing
-            if (instance instanceof InitializingBean) {
-                ((InitializingBean) instance).afterPropertiesSet();
-            }
-
+            //初始化前
             for (BeanPostProcessor beanPostProcessor : beanPostProcessorList) {
                 beanPostProcessor.postProcessBeforeInitialization(instance, beanName);
+            }
+
+            for (Method method : clazz.getDeclaredMethods()) {
+                if (method.isAnnotationPresent(PostConstruct.class)){
+                    method.invoke(instance,null);
+                }
             }
 
             //初始化
@@ -116,6 +133,7 @@ public class ApplicationContext {
                 ((InitializingBean) instance).afterPropertiesSet();
             }
 
+            //初始化后
             for (BeanPostProcessor beanPostProcessor : beanPostProcessorList) {
                 instance = beanPostProcessor.postProcessAfterInitialization(instance, beanName);
             }

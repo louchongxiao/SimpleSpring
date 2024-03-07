@@ -1,9 +1,9 @@
 package com.lcx.simplespring.service;
 
 import com.lcx.simplespring.spring.Autowired;
-import com.lcx.simplespring.spring.BeanNameAware;
 import com.lcx.simplespring.spring.Component;
-import com.lcx.simplespring.spring.InitializingBean;
+
+import javax.annotation.PostConstruct;
 
 /**
  * @authoer louchongxiao
@@ -16,8 +16,13 @@ public class UserService implements UserInterface
 {
     @Autowired
     private OrderService orderService;
+    private User admin;
 
-
+    @PostConstruct
+    public void setAdmin(){
+        admin = new User();
+        admin.setUsername("admin");
+    }
     public void test() {
         System.out.println(orderService);
     }

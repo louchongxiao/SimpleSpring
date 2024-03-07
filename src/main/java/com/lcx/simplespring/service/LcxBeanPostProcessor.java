@@ -23,6 +23,7 @@ public class LcxBeanPostProcessor implements BeanPostProcessor {
     public Object postProcessAfterInitialization(Object bean, String beanName) {
         if (beanName.equals("userService")) {
             System.out.println(22222);
+            //创建代理对象
             Object proxyInstance = Proxy.newProxyInstance(LcxBeanPostProcessor.class.getClassLoader(), bean.getClass().getInterfaces(), new InvocationHandler() {
                 @Override
                 public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {

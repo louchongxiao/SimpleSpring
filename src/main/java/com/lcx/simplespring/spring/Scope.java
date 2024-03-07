@@ -14,5 +14,6 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 @Retention(RUNTIME)
 @Target(ElementType.TYPE)
 public @interface Scope {
+    //默认单例
     String value() default "singleton";
 }
