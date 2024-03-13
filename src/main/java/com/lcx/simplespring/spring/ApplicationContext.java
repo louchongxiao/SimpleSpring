@@ -21,8 +21,12 @@ import java.util.concurrent.ConcurrentHashMap;
  *      1.处理aop，生成代理对象，代理对象继承原对象，类实现了某个或多个接口时使用动态代理，类没有实现任何接口、代理final类或final方法则
  *      使用CGLIB。代理对象会将原对象的bean作为参数。重写原对象切面方法A，将自定义的before,after等方法加入重写的方法A中。再调用原对象bean的切面方法A。
  *          1.Spring事务切面逻辑：
- *              a:事务管理器新建一个数据库连接conn
- *              b:
+ *              a:判断是否有@Transactional注解、
+ *              b:开启事务
+ *              c:事务管理器新建一个数据库连接conn 通过ThreadLocal<Map<DataSource,conn>>传递上下文
+ *              d:conn.autocommit = false
+ *              e:调用target.test(); 产生sql1 sql2
+ *              f:出现异常 conn.rollback() 未出现异常 conn.commit()
  * @authoer louchongxiao
  * @description
  * @date 2024/3/5 17:11
